@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#000000">
+	<title>Northstar Mobile Trading</title>
+	<style>
+		:root { color-scheme:dark; --blue:#347ff0; --blue-dark:#6aa2ff; --red:#ef646b; --green:#3bb79d; --ink:#edf0f4; --muted:#a0a8b2; --line:#343a44; }
+		* { box-sizing:border-box; }
+		[hidden] { display:none !important; }
+		html,body { width:100%; height:100%; margin:0; }
+		body { overflow:hidden; color:var(--ink); background:#fff; font-family:Arial,Helvetica,sans-serif; -webkit-tap-highlight-color:transparent; }
+		button,input { color:inherit; font:inherit; }
+		button { border:0; background:none; cursor:pointer; }
+		.app { width:100%; height:100dvh; display:flex; flex-direction:column; background:#fff; }
+		.topbar { position:relative; height:63px; flex:0 0 63px; display:grid; grid-template-columns:10% 1fr; grid-template-rows:1fr; align-items:center; padding:0 2.5%; border-bottom:1px solid #efeff0; background:#fff; z-index:2; }
+		.topbar.page-mode { height:70px; flex-basis:70px; }
+		.chart-tools { position:absolute; inset:0 2.5%; min-width:0; display:grid; grid-template-columns:36.5% repeat(5,12.7%); align-items:center; justify-items:center; }
+		#crosshair-button { grid-column:2; }
+		.page-heading { grid-column:2; grid-row:1; min-width:0; padding-left:7px; font-size:19px; }
+		.page-heading small { display:block; margin-top:2px; color:#85888c; font-size:15px; }
+		.page-actions { grid-column:2; grid-row:1; justify-self:end; display:flex; align-items:center; gap:9px; }
+		.page-actions button { width:38px; height:42px; color:#514f4f; font-size:27px; }
+		.page-actions svg { width:27px; height:27px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+		.page-actions [data-actions] { display:flex; align-items:center; gap:9px; }
+		.screen-header { display:none; }
+		.icon-button { min-width:42px; min-height:42px; display:grid; place-items:center; color:#ffffff; font-size:27px; line-height:1; }
+		.icon-button svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:2.1; stroke-linecap:round; stroke-linejoin:round; }
+		.menu-button { position:relative; z-index:2; grid-column:1; grid-row:1; justify-self:start; width:48px; color:#ffffff; font-size:29px; }
+		#period-button { min-width:46px; font-size:19px; font-weight:600; }
+		.chart-mode-icon { color:#528eb9; }
+		.quick-trade { height:56px; flex:0 0 56px; display:none; grid-template-columns:1fr 1fr 1fr; border-bottom:1px solid var(--line); }
+		.quick-trade.visible { display:grid; }
+		.quick-quote { min-width:0; display:flex; justify-content:space-between; align-items:center; padding:0 8px; color:#fff; background:#9a9da1; text-align:left; transition:background-color .2s ease; }
+		.quick-quote.market-up[data-order="BUY"] { background:var(--blue); }
+		.quick-quote.market-down[data-order="SELL"] { background:#e34e50; }
+		.quick-quote small { display:block; font-size:10px; }
+		.quick-quote strong { font-size:19px; }
+		.volume-control { display:flex; align-items:center; justify-content:space-around; border-bottom:1px solid #d9d9d9; font-size:18px; }
+		.volume-control button { width:35px; height:100%; font-size:22px; }
+		.volume-control input { width:34px; padding:0; border:0; outline:0; text-align:center; font-size:18px; }
+		.screens { position:relative; min-height:0; flex:1; }
+		.screen { position:absolute; inset:0; display:none; min-height:0; background:#fff; }
+		.screen.active { display:flex; flex-direction:column; }
+		.chart-screen { overflow:hidden; }
+		.chart-meta { position:absolute; z-index:1; top:16px; left:8px; pointer-events:none; }
+		.chart-meta button { padding:0; color:var(--blue-dark); font-size:16px; font-weight:600; pointer-events:auto; }
+		.chart-meta .caret { color:var(--blue); font-size:10px; vertical-align:2px; }
+		.chart-meta .period { color:#191919; }
+		.chart-meta .description { margin-top:4px; font-size:16px; }
+		.bot-badge { position:absolute; z-index:1; top:16px; right:74px; display:flex; align-items:center; gap:5px; color:#5c646b; font-size:10px; letter-spacing:.2px; pointer-events:none; }
+		.bot-badge i { width:7px; height:7px; border-radius:50%; background:#29a56f; box-shadow:0 0 0 3px #29a56f22; }
+		.bot-badge.paused i { background:#9a9a9a; box-shadow:none; }
+		.chart-wrap { position:absolute; inset:0; min-height:0; }
+		#price-chart { display:block; width:100%; height:100%; }
+		.nav-dots { position:absolute; right:9px; bottom:18px; color:#111; letter-spacing:4px; font-size:17px; }
+		.bottom-nav { height:calc(72px + env(safe-area-inset-bottom)); flex:0 0 calc(72px + env(safe-area-inset-bottom)); display:grid; grid-template-columns:repeat(5,1fr); align-items:stretch; padding:4px 4px env(safe-area-inset-bottom); border-top:1px solid #000000; background:#fffefe; z-index:2; }
+		.nav-item { min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#ffffff; }
+		.nav-item .nav-icon { height:31px; display:grid; place-items:center; font-size:28px; line-height:1; }
+		.nav-item .nav-icon svg { width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; shape-rendering:geometricPrecision; }
+		.nav-item .nav-label { font-size:14px; letter-spacing:.2px; }
+		.nav-item.active { color:var(--blue); }
+		.nav-item.active .nav-label { font-weight:600; }
+		.nav-pl { min-height:24px; display:grid; place-items:center; padding:2px 9px; border-radius:14px; background:#fceced; color:#bd625d; font-size:12px; font-weight:600; }
+		.screen-header { height:56px; flex:0 0 56px; display:flex; align-items:center; justify-content:space-between; padding:0 17px; border-bottom:1px solid #f0f0f0; }
+		.screen-title { font-size:20px; font-weight:500; }
+		.header-actions { display:flex; align-items:center; gap:18px; }
+		.header-action { width:32px; height:38px; color:#ffffff; font-size:28px; }
+		.list-scroll { min-height:0; flex:1; overflow-y:auto; overscroll-behavior:contain; }
+		.market-filter { height:42px; flex:0 0 42px; display:flex; align-items:center; gap:8px; padding:0 17px; border-bottom:1px solid var(--line); }
+		.market-filter button { padding:6px 12px; border-radius:16px; color:#ffffff; background:#f3f4f5; font-size:12px; }
+		.market-filter button.active { color:#fff; background:var(--blue); }
+		.quote-row { width:100%; min-height:108px; display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:13px; padding:9px 16px 8px 18px; border-bottom:1px solid #ededed; text-align:left; }
+		.quote-info { min-width:0; align-self:stretch; display:flex; flex-direction:column; justify-content:space-between; padding:5px 0; }
+		.quote-change { color:var(--muted); font-size:13px; }
+		.quote-change em { margin-left:5px; color:var(--red); font-style:normal; }
+		.quote-symbol { font-size:17px; font-weight:600; }
+		.quote-time { color:#8c8c8c; font-size:12px; }
+		.quote-price { min-width:78px; text-align:right; font-size:24px; font-weight:600; }
+		.quote-price.ask { color:var(--blue-dark); }
+		.quote-price.bid { color:var(--red); }
+		.quote-price.rising { color:#287cb7; }
+		.quote-price.falling { color:#b6272e; }
+		.quote-price small { font-size:13px; vertical-align:6px; }
+		.quote-price.tick-up { animation:tick-up .55s ease; }
+		.quote-price.tick-down { animation:tick-down .55s ease; }
+		@keyframes tick-up { 40% { background:#e4f5ec; } }
+		@keyframes tick-down { 40% { background:#fce8e8; } }
+		.quote-range { grid-column:2/4; align-self:start; margin-top:-11px; color:#898989; text-align:right; font-size:11px; white-space:nowrap; }
+		.quote-range span+span { margin-left:12px; }
+		.trade-summary { padding:4px 23px 10px; border-bottom:1px solid var(--line); }
+		.trade-heading { height:37px; display:flex; align-items:center; gap:14px; font-size:15px; }
+		.trade-heading .loss { color:var(--red); font-size:19px; }
+		.trade-heading .profit { color:var(--blue-dark); font-size:19px; }
+		.bot-line { display:flex; align-items:center; justify-content:space-between; padding:5px 0 1px; color:#73787d; font-size:11px; }
+		.bot-line strong { color:#20895d; font-weight:600; }
+		.bot-line.paused strong { color:#8a8a8a; }
+		.account-metrics { display:grid; gap:9px; padding:8px 0 9px; }
+		.metric { display:grid; grid-template-columns:auto 1fr auto; align-items:baseline; gap:9px; font-size:14px; }
+		.metric .leader { height:1px; border-bottom:4px dotted #e6e6e6; }
+		.metric strong { font-size:14px; }
+		.position-heading { height:39px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; color:#8b8b8b; background:#f7f7f7; font-size:14px; font-weight:600; }
+		.position-row { width:100%; min-height:70px; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; padding:8px 18px 7px 20px; border-bottom:1px solid var(--line); text-align:left; }
+		.position-description { display:grid; gap:3px; font-size:14px; font-weight:600; }
+		.position-description .side { color:var(--blue-dark); }
+		.position-description .side.sell,.history-row .side.sell { color:#ef646b; }
+		.position-description .prices { color:#8a8a8a; }
+		.position-profit { color:var(--red); font-size:19px; font-weight:600; }
+		.history-row,.message-row { padding:16px 18px; border-bottom:1px solid var(--line); }
+		.history-row { display:flex; justify-content:space-between; gap:12px; }
+		.history-row strong,.message-row strong { display:block; margin-bottom:6px; font-size:15px; }
+		.history-row small,.message-row small { color:#888; font-size:12px; }
+		.history-row .closed { color:var(--red); font-size:16px; }
+		.history-row .side { color:var(--blue-dark); }
+		.history-context { padding:0 17px 9px; color:#85888c; font-size:16px; }
+		.history-tabs { height:48px; flex:0 0 48px; display:grid; grid-template-columns:repeat(3,1fr); border-bottom:1px solid var(--line); }
+		.history-tab { position:relative; color:#85888c; font-size:14px; }
+		.history-tab.active { color:#18191b; }
+		.history-tab.active::after { position:absolute; right:0; bottom:-1px; left:0; height:3px; content:""; background:var(--blue); }
+		.history-summary { display:grid; gap:8px; padding:14px 17px 16px; border-bottom:1px solid var(--line); }
+		.history-summary .metric { font-size:14px; }
+		.history-summary .metric strong:last-child { font-size:14px; }
+		.bot-event { min-height:24px; padding:4px 17px; color:#178454; font-size:11px; border-bottom:1px solid #edf1f3; }
+		.message-row p { margin:0 0 6px; color:#666; line-height:1.45; }
+		.wheel-layer { position:fixed; inset:0; z-index:8; display:none; pointer-events:none; }
+		.wheel-layer.open { display:block; pointer-events:auto; }
+		.wheel-dismiss { position:absolute; inset:0; width:100%; height:100%; }
+		.time-wheel { position:absolute; right:max(18px,env(safe-area-inset-right)); bottom:calc(33vh + env(safe-area-inset-bottom)); width:min(76vw,310px); aspect-ratio:1; border-radius:50%; background:var(--blue); box-shadow:0 5px 18px #102d5633; animation:wheel-in .16s ease-out; }
+		.time-wheel::before { content:""; position:absolute; inset:23%; border-radius:50%; background:#fff; }
+		.wheel-center { position:absolute; inset:31%; z-index:1; display:grid; place-items:center; color:#777; font-size:23px; }
+		.wheel-item { position:absolute; z-index:2; width:42px; height:34px; padding:0; transform:translate(-50%,-50%); color:#fff; font-size:16px; font-weight:600; }
+		.wheel-item.selected { color:#cfe1ff; }
+		.wheel-item.tool { font-size:24px; font-weight:400; }
+		@keyframes wheel-in { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
+		.drawer-layer { position:fixed; inset:0; z-index:9; display:none; background:#0005; }
+		.drawer-layer.open { display:block; }
+		.drawer { width:min(82vw,330px); height:100%; padding:16px 0 max(20px,env(safe-area-inset-bottom)); overflow-y:auto; background:#050505; box-shadow:3px 0 18px #0008; }
+		.drawer-brand { display:flex; align-items:center; gap:14px; min-height:105px; padding:12px 20px 18px; border-bottom:1px solid #25282e; font-size:17px; font-weight:600; }
+		.drawer-brand small { display:block; margin-top:5px; color:#888; font-size:12px; font-weight:400; }
+		.account-avatar { width:42px; height:42px; flex:none; display:grid; place-items:center; border:0; border-radius:0; background:#ffd400; color:#151515; font-size:10px; font-weight:700; }
+		.manage-accounts { display:block; margin-top:9px; color:#65a2ff; font-size:14px; font-weight:400; text-decoration:none; }
+		.drawer-section { padding:8px 0; }
+		.drawer-link { width:100%; min-height:48px; display:flex; align-items:center; gap:16px; padding:10px 20px; color:#f2f3f5; text-align:left; font-size:15px; }
+		.drawer-link svg { width:24px; height:24px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; color:#c5c8cd; }
+		.mail-count { width:22px; height:22px; display:grid; place-items:center; margin-left:auto; border-radius:50%; background:#e6535a; color:#fff; font-size:12px; font-weight:600; }
+		.ads-pill { margin-left:4px; padding:2px 7px; border:1px solid #4188e8; border-radius:12px; color:#74acff; font-size:10px; font-weight:500; }
+		.toast { position:fixed; z-index:12; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); max-width:calc(100vw - 32px); padding:11px 16px; transform:translate(-50%,12px); border-radius:4px; background:#30343a; color:#fff; font-size:13px; opacity:0; transition:.18s ease; pointer-events:none; white-space:nowrap; }
+		.toast.show { transform:translate(-50%,0); opacity:1; }
+		@media (min-width:700px) { .app { max-width:540px; margin:0 auto; border-inline:1px solid #eee; box-shadow:0 0 30px #0000000b; } .time-wheel { right:calc(50% - 252px); } }
+		@media (max-height:650px) { .quote-row { min-height:88px; } .time-wheel { width:min(68vw,270px); bottom:calc(27vh + env(safe-area-inset-bottom)); } .bottom-nav { height:calc(64px + env(safe-area-inset-bottom)); flex-basis:calc(64px + env(safe-area-inset-bottom)); } }
+		body,.app,.screen { color:var(--ink); background:#111419; }
+		.topbar,.quick-trade,.volume-control,.bottom-nav { background:#191d24; border-color:#303640; }
+		.topbar { border-bottom-color:#303640; }
+		.page-heading small,.quote-time,.quote-range,.position-description .prices,.history-context,.history-row small,.message-row small { color:#9ba3ad; }
+		.page-actions button,.icon-button,.header-action { color:#c4cad2; }
+		.menu-button { color:#f0f2f5; }
+		.chart-mode-icon { color:#7bb5db; }
+		.screen-header,.position-heading { color:#e5e8ec; background:#191d24; border-color:#303640; }
+		.position-heading { color:#aeb5be; }
+		.market-filter { border-color:#343a44; }
+		.market-filter button { color:#b3bbc5; background:#252b33; }
+		.quote-row,.position-row,.history-row,.message-row { color:#edf0f4; background:transparent; border-color:#303640; }
+		.quote-row:active,.position-row:active,.drawer-link:active { background:#232a34; }
+		.quote-price.ask,.position-description .side,.history-row .side { color:#6fa8ff; }
+		.quote-price.bid { color:#f27479; }
+		.quote-price.rising { color:#6fa8ff; }
+		.quote-price.falling { color:#ff777d; }
+		@keyframes tick-up { 40% { background:#17362f; } }
+		@keyframes tick-down { 40% { background:#3a2025; } }
+		.trade-summary,.history-summary { background:#111419; border-color:#343a44; }
+		.metric .leader { border-color:#424955; }
+		.history-tabs { border-color:#343a44; }
+		.history-tab { color:#9ba3ad; }
+		.history-tab.active { color:#f1f3f6; }
+		.bot-event { color:#57c69e; border-color:#303640; }
+		.message-row p { color:#b0b7c0; }
+		.time-wheel::before { background:#181c23; }
+		.wheel-center { color:#c4cad2; }
+		.drawer { color:#edf0f4; background:#191d24; }
+		.drawer-brand { border-color:#343a44; }
+		.drawer-brand small { color:#a0a8b2; }
+		.toast { background:#303640; color:#f3f5f7; }
+		.empty-view { color:#a0a8b2; }
+		:root { --ink:#f2f4f7; --muted:#9299a3; --line:#202329; }
+		body,.app,.screen,.trade-summary,.history-summary { background:#000; }
+		.topbar,.quick-trade,.volume-control,.bottom-nav,.screen-header,.position-heading,.drawer { background:#050505; }
+		.topbar,.screen-header,.position-heading,.trade-summary,.history-summary,.bottom-nav,.quick-trade,.volume-control { border-color:#1a1d22; }
+		.quote-row,.position-row,.history-row,.message-row { border-color:#1a1d22; }
+		.market-filter button { background:#111; }
+		.time-wheel::before { background:#000; }
+		.drawer-brand { border-color:#1a1d22; }
+		.drawer-layer { background:#000b; }
+		.quote-row:active,.position-row:active,.drawer-link:active { background:#101114; }
+		.chart-meta .period { color:#f2f4f7; }
+		.chart-meta .description { color:#d0d4da; }
+		.nav-dots { color:#9ba3ad; }
+		.nav-pl { color:#f27479; background:#27171b; }
+		.page-heading #total-profit { display:inline-block; font-size:18px; font-weight:600; }
+		.page-heading #total-profit.profit { color:#6fa8ff; }
+		.page-heading #total-profit.loss { color:#ef646b; }
+		.history-context { color:#a0a8b2; }
+		.order-result { color:#9ba3ad; }
+		.order-result b { color:#c3c8d0; font-weight:600; }
+		.chart-meta .period { color:#e5e8ec; }
+		.order-row { min-height:74px; align-items:center; }
+		.order-row > span:first-child { display:grid; gap:4px; }
+		.order-result { display:flex; flex-direction:column; align-items:flex-end; gap:5px; color:#969da7; font-size:12px; }
+		.order-result b { color:#b7bec8; font-size:12px; font-weight:600; }
+	</style>
+</head>
+<body>
+	<main class="app">
+		<header class="topbar" id="topbar" aria-label="App controls">
+			<button class="icon-button menu-button" id="menu-button" aria-label="Open menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+			<div class="page-heading" id="page-heading" hidden><span id="page-title">Charts</span><small id="page-subtitle"><span id="subtitle-text"></span><strong id="total-profit" class="profit" hidden>0.00 USD</strong></small></div>
+			<div class="chart-tools" id="chart-tools" aria-label="Chart tools">
+				<button class="icon-button" id="crosshair-button" aria-label="Crosshair"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v7m0 6v7M2 12h7m6 0h7"/></svg></button>
+				<button class="icon-button" id="indicator-button" aria-label="Indicators"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 14c3 0 3-6 6-6s3 8 6 8 3-10 8-10M2 19c4 0 4-3 7-3"/></svg></button>
+				<button class="icon-button" id="period-button" aria-label="Choose chart timeframe">M1</button>
+				<button class="icon-button chart-mode-icon" id="chart-mode-button" aria-label="Toggle quick trade"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="12" r="7" stroke="#e85b60"/><path d="M14.5 6.8A7 7 0 0 1 10 19" stroke="#e85b60"/><path d="M14 5a7 7 0 1 1 0 14" stroke="#55a8e8"/></svg></button>
+				<button class="icon-button" id="objects-button" aria-label="Chart objects"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="13" height="12" rx="2" stroke="#e85b60"/><rect x="8" y="8" width="13" height="12" rx="2" stroke="#55a8e8"/></svg></button>
+			</div>
+			<div class="page-actions" id="page-actions" hidden>
+				<div data-actions="quotes" hidden><button aria-label="Add symbol"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/></svg></button><button aria-label="Edit quotes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16zM13.5 5.5l4 4"/></svg></button></div>
+				<div data-actions="trade" hidden><button aria-label="Account summary"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18m-4 6h1"/></svg></button><button aria-label="Sort positions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m0 0-4-4m4 4 4-4M17 21V4m0 0-4 4m4-4 4 4"/></svg></button><button aria-label="New simulated order"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18"/><path d="M19 5v4m-2-2h4"/></svg></button></div>
+				<div data-actions="history" hidden><button aria-label="Refresh history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12-2L20 9M4 15l2.5 2a7 7 0 0 0 12-2"/></svg></button><button aria-label="Sort history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v17m0 0-4-4m4 4 4-4M17 21V4m0 0-4 4m4-4 4 4"/></svg></button><button aria-label="Choose date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h2m4 0h2m-8 3h2"/></svg></button></div>
+				<div data-actions="messages" hidden><button aria-label="Compose message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>
+			</div>
+		</header>
+		<section class="quick-trade" id="quick-trade" aria-label="Quick trade">
+			<button class="quick-quote" data-order="SELL"><span>SELL<small id="quick-sell-symbol">EURUSD</small></span><strong id="quick-sell-price">1.12244</strong></button>
+			<div class="volume-control"><button id="volume-down" aria-label="Decrease volume">⌄</button><input id="volume" value="0.01" inputmode="decimal" aria-label="Volume in lots"><button id="volume-up" aria-label="Increase volume">⌃</button></div>
+			<button class="quick-quote" data-order="BUY"><span>BUY<small id="quick-buy-symbol">EURUSD</small></span><strong id="quick-buy-price">1.12259</strong></button>
+		</section>
+		<div class="screens">
+			<section class="screen chart-screen active" id="screen-charts" aria-label="Charts">
+				<div class="chart-meta"><button id="chart-symbol-button"><span id="chart-symbol">EURUSD</span> <span class="caret">▼</span></button> <span class="period" id="chart-period">M1</span><div class="description" id="symbol-description">Euro vs US Dollar</div></div>
+				<div class="chart-wrap"><canvas id="price-chart" aria-label="EURUSD candlestick chart"></canvas></div>
+				<div class="nav-dots" aria-hidden="true">•••</div>
+			</section>
+			<section class="screen" id="screen-quotes" aria-label="Quotes">
+				<div class="list-scroll" id="quote-list"></div>
+			</section>
+			<section class="screen" id="screen-trade" aria-label="Trade">
+				<div class="trade-summary">
+					<div class="account-metrics">
+						<div class="metric"><strong>Balance:</strong><span class="leader"></span><strong id="balance">8.00</strong></div>
+						<div class="metric"><strong>Equity:</strong><span class="leader"></span><strong id="equity">8.00</strong></div>
+						<div class="metric"><strong>Margin:</strong><span class="leader"></span><strong id="margin">0.00</strong></div>
+						<div class="metric"><strong>Free margin:</strong><span class="leader"></span><strong id="free-margin">8.00</strong></div>
+						<div class="metric"><strong>Margin Level (%):</strong><span class="leader"></span><strong id="margin-level">—</strong></div>
+					</div>
+				</div>
+				<div class="position-heading"><span>Positions</span><button id="position-menu" aria-label="Position options">•••</button></div>
+				<div class="list-scroll" id="positions">
+					<button class="position-row"><span class="position-description"><span>EURUSD, <span class="side">buy 0.51</span></span><span class="prices">1.12362 → 1.12359</span></span><strong class="position-profit">-1.14</strong></button>
+					<button class="position-row"><span class="position-description"><span>EURUSD, <span class="side">buy 0.51</span></span><span class="prices">1.12362 → 1.12359</span></span><strong class="position-profit">-1.14</strong></button>
+					<button class="position-row"><span class="position-description"><span>GBPUSD, <span class="side">sell 0.25</span></span><span class="prices">1.33742 → 1.33748</span></span><strong class="position-profit">-4.56</strong></button>
+					<button class="position-row"><span class="position-description"><span>USDJPY, <span class="side">buy 0.10</span></span><span class="prices">158.150 → 158.156</span></span><strong class="position-profit">+0.42</strong></button>
+				</div>
+			</section>
+			<section class="screen" id="screen-history" aria-label="History">
+				<div class="history-context">All symbols</div>
+				<div class="history-tabs" role="tablist" aria-label="History categories"><button class="history-tab active" data-history-tab="POSITIONS">POSITIONS</button><button class="history-tab" data-history-tab="ORDERS">ORDERS</button><button class="history-tab" data-history-tab="DEALS">DEALS</button></div>
+				<div class="history-summary" id="history-summary">
+					<div class="metric"><strong>Profit:</strong><span class="leader"></span><strong id="history-profit">0.00</strong></div>
+					<div class="metric"><strong>Deposit</strong><span class="leader"></span><strong>0.00</strong></div>
+					<div class="metric"><strong>Swap:</strong><span class="leader"></span><strong>0.00</strong></div>
+					<div class="metric"><strong>Commission:</strong><span class="leader"></span><strong>0.00</strong></div>
+					<div class="metric"><strong>Balance:</strong><span class="leader"></span><strong id="history-balance">8.00</strong></div>
+				</div>
+				<div class="history-summary" id="orders-summary" hidden>
+					<div class="metric"><strong>Filled:</strong><span class="leader"></span><strong id="orders-filled">0</strong></div>
+					<div class="metric"><strong>Canceled:</strong><span class="leader"></span><strong>0</strong></div>
+					<div class="metric"><strong>Total:</strong><span class="leader"></span><strong id="orders-total">0</strong></div>
+				</div>
+
+				<div class="list-scroll" id="history-list"></div>
+			</section>
+			<section class="screen" id="screen-messages" aria-label="Messages">
+				<div class="list-scroll">
+					<div class="message-row"><strong>Account ready</strong><p>Quotes and order history on this page are simulated locally; no live brokerage connection is enabled.</p><small>Today, 08:00</small></div>
+					<div class="message-row"><strong>Market hours</strong><p>Market hours and prices shown here are examples only and are not live data.</p><small>Yesterday, 16:30</small></div>
+				</div>
+			</section>
+		</div>
+		<nav class="bottom-nav" aria-label="Main navigation">
+			<button class="nav-item" data-screen="quotes"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v18m0 0-4-4m4 4 4-4M16 21V3m0 0-4 4m4-4 4 4"/></svg></span><span class="nav-label">Quotes</span></button>
+			<button class="nav-item active" data-screen="charts"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2v20m12-20v20"/><rect x="3.5" y="7" width="5" height="8"/><rect x="15.5" y="5" width="5" height="10"/></svg></span><span class="nav-label">Charts</span></button>
+			<button class="nav-item" data-screen="trade"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 18 6-7 4 3 8-9M16 5h5v5"/><circle cx="3" cy="18" r="1.5" fill="currentColor"/><circle cx="9" cy="11" r="1.5" fill="currentColor"/><circle cx="13" cy="14" r="1.5" fill="currentColor"/><circle cx="21" cy="5" r="1.5" fill="currentColor"/></svg></span><span class="nav-pl" id="nav-profit">+0.00</span></button>
+			<button class="nav-item" data-screen="history"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.7 6.4M3 4v7h7m2-2v4l3 2"/></svg></span><span class="nav-label">History</span></button>
+			<button class="nav-item" data-screen="messages"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-5 4v-4H5a2 2 0 0 1-2-2V4zm8 4h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3l-3 2v-2"/></svg></span><span class="nav-label">Messages</span></button>
+		</nav>
+	</main>
+	<div class="wheel-layer" id="wheel-layer" aria-hidden="true">
+		<button class="wheel-dismiss" id="wheel-dismiss" aria-label="Close timeframe menu"></button>
+		<div class="time-wheel" role="menu" aria-label="Choose timeframe">
+			<button class="wheel-center " id="wheel-center" aria-label="Close timeframe menu"></button>
+			<button class="wheel-item selected" data-period="M1" style="left:26%;top:28%">M1</button><button class="wheel-item" data-period="M5" style="left:40%;top:15%">M5</button><button class="wheel-item" data-period="M15" style="left:57%;top:13%">M15</button><button class="wheel-item" data-period="M30" style="left:74%;top:22%">M30</button><button class="wheel-item" data-period="H1" style="left:86%;top:39%">H1</button><button class="wheel-item" data-period="H4" style="left:87%;top:58%">H4</button><button class="wheel-item" data-period="D1" style="left:76%;top:76%">D1</button><button class="wheel-item" data-period="W1" style="left:57%;top:87%">W1</button><button class="wheel-item" data-period="MN" style="left:38%;top:83%">MN</button>
+			<button class="wheel-item tool" data-wheel-tool="Chart objects" style="left:16%;top:66%" aria-label="Objects">▣</button><button class="wheel-item tool" data-wheel-tool="Indicators" style="left:14%;top:49%" aria-label="Indicators">♧</button><button class="wheel-item tool" data-wheel-tool="Chart settings" style="left:22%;top:82%" aria-label="Chart settings">☷</button><button class="wheel-item tool" data-wheel-tool="Crosshair" style="left:39%;top:91%" aria-label="Crosshair">＋</button><button class="wheel-item tool" data-wheel-tool="Chart type" style="left:73%;top:88%" aria-label="Chart type">∿</button>
+		</div>
+	</div>
+		<div class="drawer-layer" id="drawer-layer"><aside class="drawer" aria-label="App menu"><div class="drawer-brand"><span class="account-avatar">exness</span><span>VEEFX<small>296508819-Exness-MT5Re...</small><a href="#" class="manage-accounts">Manage accounts</a></span></div><div class="drawer-section"><button class="drawer-link" data-drawer-screen="trade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 17 6-6 4 3 8-9M16 5h5v5"/></svg><span>Trade</span></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v13H9l-5 4V4zm4 4h8m-8 4h6"/></svg><span>News</span></button><button class="drawer-link" data-drawer-screen="messages"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg><span>Mailbox</span><b class="mail-count">8</b></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8m-8 4h8m-8 4h5"/></svg><span>Journal</span></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="m19 13 2 1-2 4-2-1-2 1v2H9v-2l-2-1-2 1-2-4 2-1v-2l-2-1 2-4 2 1 2-1V4h6v2l2 1 2-1 2 4-2 1z"/></svg><span>Settings</span></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h2m4 0h2"/></svg><span>Economic calendar</span><small class="ads-pill">Ads</small></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="8" r="2"/><circle cx="17" cy="8" r="2"/><path d="M3 19c0-3 2-5 4-5s4 2 4 5m2 0c0-3 2-5 4-5s4 2 4 5"/></svg><span>Traders Community</span></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 16-8-5 17-4-7-7-2zM11 14l9-10"/></svg><span>MQL5 Algo Trading</span></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 4 1.8c-1.2.8-1.7 1.3-1.7 2.7m0 3h.01"/></svg><span>User guide</span></button><button class="drawer-link"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>About</span></button></div></aside></div>
+	<div class="toast" id="toast" role="status" aria-live="polite"></div>
+	<script>
+		const market = [
+			{symbol:'EURUSD',description:'Euro vs US Dollar',bid:'1.12244',ask:'1.12259',change:'-0.09%',delta:'-98',low:'1.12241',high:'1.12388'},
+			{symbol:'GBPUSD',description:'Great Britain Pound vs US Dollar',bid:'1.33740',ask:'1.33744',change:'-0.04%',delta:'-48',low:'1.33595',high:'1.33842'},
+			{symbol:'USDCHF',description:'US Dollar vs Swiss Franc',bid:'0.82558',ask:'0.82560',change:'+0.17%',delta:'+104',low:'0.82403',high:'0.82636'},
+			{symbol:'USDJPY',description:'US Dollar vs Japanese Yen',bid:'158.156',ask:'158.159',change:'0.00%',delta:'-6',low:'158.125',high:'158.391'},
+			{symbol:'USDCNH',description:'US Dollar vs Chinese Yuan',bid:'6.67806',ask:'6.67818',change:'+0.06%',delta:'+373',low:'6.67253',high:'6.67955'},
+			{symbol:'AUDUSD',description:'Australian Dollar vs US Dollar',bid:'0.70145',ask:'0.70146',change:'+0.16%',delta:'+115',low:'0.69933',high:'0.70295'},
+			{symbol:'NZDUSD',description:'New Zealand Dollar vs US Dollar',bid:'0.56751',ask:'0.56752',change:'-0.17%',delta:'-96',low:'0.56733',high:'0.56864'},
+			{symbol:'USDCAD',description:'US Dollar vs Canadian Dollar',bid:'1.40636',ask:'1.40638',change:'+0.03%',delta:'+45',low:'1.40538',high:'1.40677'},
+			{symbol:'USDSEK',description:'US Dollar vs Swedish Krona',bid:'9.90540',ask:'9.90640',change:'+0.13%',delta:'+1280',low:'9.87862',high:'9.91200'},
+			{symbol:'XAUUSD',description:'Gold vs US Dollar',assetClass:'metal',bid:'4027.32',ask:'4027.79',change:'+0.12%',delta:'+28',low:'4024.12',high:'4032.80'},
+			{symbol:'BTCUSD',description:'Bitcoin vs US Dollar',assetClass:'crypto',bid:'67100.50',ask:'67105.50',change:'+0.24%',delta:'+158',low:'66725.30',high:'67281.60'},
+			{symbol:'ETHUSD',description:'Ethereum vs US Dollar',assetClass:'crypto',bid:'3512.40',ask:'3512.90',change:'+0.18%',delta:'+63',low:'3488.20',high:'3524.80'},
+			{symbol:'SOLUSD',description:'Solana vs US Dollar',assetClass:'crypto',bid:'155.280',ask:'155.320',change:'-0.11%',delta:'-17',low:'153.940',high:'156.020'},
+			{symbol:'XRPUSD',description:'XRP vs US Dollar',assetClass:'crypto',bid:'0.55210',ask:'0.55230',change:'+0.07%',delta:'+4',low:'0.54820',high:'0.55460'}
+		];
+		const startingBalance = 8;
+		const botSymbol = market.find(item=>item.symbol==='XAUUSD');
+		let balance = startingBalance, selectedSymbol = botSymbol, currentPeriod = 'M1';
+		let toastTimeout, botRunning = true, simulationTick = 0, historyTab = 'POSITIONS';
+		const botBatchSizes = [4,5,8,9];
+		let botBatchIndex = 0, botBatchSide = null;
+		const positions = [], closedTrades = [], historyEntries = [];
+		const canvas = document.querySelector('#price-chart'), ctx = canvas.getContext('2d');
+		const digitsFor = item => (item.bid.split('.')[1] || '').length;
+		const stepFor = item => 10 ** -digitsFor(item);
+		const spreadFor = item => stepFor(item) * (item.symbol.endsWith('JPY') ? 3 : 1.5);
+		const formatNumber = value => value.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+		const formatPrice = (item, value) => value.toFixed(digitsFor(item));
+		const formatTimestamp = () => { const now=new Date(); return `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`; };
+		const periods = ['M1','M5','M15','M30','H1','H4','D1','W1','MN'];
+		const candleCadence = {M1:8,M5:14,M15:22,M30:30,H1:42,H4:55,D1:70,W1:90,MN:120};
+		function seedCandles(item, period) {
+			const step = stepFor(item), scale = step * 24;
+			let price = Number(item.bid) - scale * (1 + periods.indexOf(period) * .2);
+			item.candlesByPeriod[period] = Array.from({length:36}, (_, index) => {
+				const open = price;
+				const close = open + (Math.sin(index * (.55 + periods.indexOf(period) * .07)) * .55 + (Math.random() - .5) * .9) * scale;
+				const wick = Math.random() * scale * .7;
+				price = close;
+				return {open, close, high:Math.max(open,close)+wick, low:Math.min(open,close)-wick};
+			});
+		}
+		market.forEach(item => { item.reference = Number(item.bid); item.direction = 'flat'; item.candlesByPeriod = {}; periods.forEach(period => seedCandles(item,period)); });
+
+		function drawChart() {
+			const rect = canvas.getBoundingClientRect(); if (!rect.width || !rect.height) return;
+			const ratio = devicePixelRatio || 1; canvas.width = Math.round(rect.width * ratio); canvas.height = Math.round(rect.height * ratio); ctx.setTransform(ratio,0,0,ratio,0,0);
+			const width=rect.width,height=rect.height,axisWidth=Math.max(66,Math.min(78,width*.15)),plotRight=width-axisWidth,top=1,bottom=height-36,plotHeight=bottom-top;
+			const candles=selectedSymbol.candlesByPeriod[currentPeriod], values=candles.flatMap(c=>[c.high,c.low]), step=stepFor(selectedSymbol);
+			const low=Math.min(...values)-step*10, high=Math.max(...values)+step*10, range=high-low || step*20;
+			const y=price=>top+(high-price)/range*plotHeight;
+			ctx.clearRect(0,0,width,height); ctx.fillStyle='#000000'; ctx.fillRect(0,0,width,height);
+			for(let i=0;i<=24;i++) { const py=top+i*plotHeight/24; ctx.beginPath();ctx.setLineDash([6,5]);ctx.strokeStyle='#24272d';ctx.moveTo(0,Math.round(py)+.5);ctx.lineTo(plotRight,Math.round(py)+.5);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#aeb5bf';ctx.font='12px Arial';ctx.textAlign='left';ctx.fillText((high-i*range/24).toFixed(digitsFor(selectedSymbol)),plotRight+5,py+4); }
+			for(let i=0;i<=12;i++){const px=i*plotRight/12;ctx.beginPath();ctx.setLineDash([6,5]);ctx.strokeStyle='#171a1f';ctx.moveTo(Math.round(px)+.5,top);ctx.lineTo(Math.round(px)+.5,bottom);ctx.stroke();ctx.setLineDash([]);}
+			const candleGap=plotRight/(candles.length+2),bodyWidth=Math.max(4,Math.min(11,candleGap*.62));
+			candles.forEach((candle,index)=>{const x=candleGap*(index+1),color=candle.close>=candle.open?'#2aa39a':'#e65355';ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+.5,y(candle.high));ctx.lineTo(x+.5,y(candle.low));ctx.stroke();ctx.fillStyle=color;ctx.fillRect(x-bodyWidth/2,y(Math.max(candle.open,candle.close)),bodyWidth,Math.max(2,y(Math.min(candle.open,candle.close))-y(Math.max(candle.open,candle.close))));});
+			const currentY=y(Number(selectedSymbol.bid)),trendColor=selectedSymbol.direction==='up'?'#2aa39a':selectedSymbol.direction==='down'?'#e65355':'#999da1';ctx.beginPath();ctx.strokeStyle=trendColor;ctx.moveTo(0,currentY+.5);ctx.lineTo(plotRight,currentY+.5);ctx.stroke();ctx.fillStyle=trendColor;ctx.fillRect(plotRight+1,currentY-14,axisWidth-1,36);ctx.fillStyle='#fff';ctx.font='13px Arial';ctx.fillText(selectedSymbol.bid,plotRight+5,currentY+1);ctx.font='11px Arial';ctx.fillText(`00:${String(59-simulationTick%60).padStart(2,'0')}`,plotRight+5,currentY+15);
+			positions.filter(position=>position.symbol===selectedSymbol.symbol).forEach(position=>{const entryY=y(position.openPrice),color=position.side==='buy'?'#397fca':'#c45252';ctx.beginPath();ctx.setLineDash([5,4]);ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.moveTo(0,entryY);ctx.lineTo(plotRight,entryY);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=color;ctx.font='11px Arial';ctx.textAlign='left';ctx.fillText(`${position.side.toUpperCase()} ${position.volume.toFixed(2)}`,4,entryY-4);});
+			ctx.font='12px Arial';ctx.fillStyle='#c1c8d1';ctx.textAlign='center';const times=currentPeriod==='M1'?['21 Oct 07:20','21 Oct 07:29','21 Oct 07:38','21 Oct 07:47']:['17 Oct 08:00','19 Oct 08:00','21 Oct 08:00','23 Oct 08:00'];times.forEach((label,i)=>ctx.fillText(label,plotRight*(.05+i*.29),height-9));ctx.textAlign='left';
+		}
+		function renderQuotes(){
+			const list=document.querySelector('#quote-list');
+			list.innerHTML=market.map((item,index)=>{const [bidMain,bidFrac]=item.bid.split('.'),[askMain,askFrac]=item.ask.split('.'),color=item.change.startsWith('-')?'#c54c4b':'#287cb7',direction=item.direction==='up'?'tick-up':item.direction==='down'?'tick-down':'';return `<button class="quote-row" data-symbol="${item.symbol}"><span class="quote-info"><span class="quote-change">${item.delta.replace(/^\+/,'')} <em style="color:${color}">${item.change.replace(/^\+/,'')}</em></span><strong class="quote-symbol">${item.symbol}</strong><span class="quote-time">${new Date().toLocaleTimeString('en-GB')} ▱ ${index+1}</span></span><strong class="quote-price bid ${direction}">${bidMain}.<small>${bidFrac||''}</small></strong><strong class="quote-price ask ${direction}">${askMain}.<small>${askFrac||''}</small></strong><span class="quote-range"><span>L: ${item.low}</span><span>H: ${item.high}</span></span></button>`;}).join('');
+			list.querySelectorAll('.quote-row').forEach(row=>row.addEventListener('click',()=>{selectedSymbol=market.find(item=>item.symbol===row.dataset.symbol);updateSymbol();showScreen('charts');}));
+		}
+		function updateSymbol(){document.querySelector('#chart-symbol').textContent=selectedSymbol.symbol;document.querySelector('#symbol-description').textContent=selectedSymbol.description;document.querySelector('#quick-sell-symbol').textContent=selectedSymbol.symbol;document.querySelector('#quick-buy-symbol').textContent=selectedSymbol.symbol;document.querySelector('#quick-sell-price').textContent=selectedSymbol.bid;document.querySelector('#quick-buy-price').textContent=selectedSymbol.ask;document.querySelectorAll('.quick-quote').forEach(button=>{button.classList.remove('market-up','market-down');button.classList.add(selectedSymbol.direction==='up'?'market-up':selectedSymbol.direction==='down'?'market-down':'market-flat');});canvas.setAttribute('aria-label',`${selectedSymbol.symbol} candlestick chart`);drawChart();}
+		function showScreen(name){
+			document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===`screen-${name}`));
+			document.querySelectorAll('.nav-item').forEach(b=>{const active=b.dataset.screen===name;b.classList.toggle('active',active);b.setAttribute('aria-current',active?'page':'false');});
+			const isChart=name==='charts', topbar=document.querySelector('#topbar');
+			topbar.classList.toggle('page-mode',!isChart);
+			document.querySelector('#page-heading').hidden=isChart;
+			document.querySelector('#chart-tools').hidden=!isChart;
+			document.querySelector('#page-actions').hidden=isChart;
+			document.querySelectorAll('[data-actions]').forEach(group=>group.hidden=group.dataset.actions!==name);
+			const titles={quotes:['Quotes',''],trade:['Trade',''],history:['History','All symbols'],messages:['Messages','']};
+			if(!isChart){document.querySelector('#page-title').textContent=titles[name][0];document.querySelector('#subtitle-text').textContent=titles[name][1];document.querySelector('#total-profit').hidden=name!=='trade';}
+			if(name==='charts')requestAnimationFrame(drawChart);
+		}
+		function renderPositions(){
+			const list=document.querySelector('#positions');
+			list.innerHTML=positions.map(position=>`<button class="position-row" data-position-id="${position.id}"><span class="position-description"><span>${position.symbol}, <span class="side ${position.side}">${position.side} ${position.volume.toFixed(2)}</span></span><span class="prices">${formatPrice(market.find(item=>item.symbol===position.symbol),position.openPrice)} → ${formatPrice(market.find(item=>item.symbol===position.symbol),position.mark)}</span></span><strong class="position-profit" style="color:${position.profit>=0?'#287cb7':'#b6272e'}">${position.profit.toFixed(2)}</strong></button>`).join('') || '<div class="empty-view">Waiting for a market setup...</div>';
+			list.querySelectorAll('[data-position-id]').forEach(row=>row.addEventListener('click',()=>closePosition(Number(row.dataset.positionId),'Closed manually in simulation')));
+		}
+		function renderHistory(){
+			const list=document.querySelector('#history-list');
+			const orders=historyEntries.filter(trade=>trade.kind==='order');
+			const rows=historyEntries.filter(trade=>trade.kind===historyTab.toLowerCase().slice(0,-1));
+			document.querySelector('#history-summary').hidden=historyTab==='ORDERS';
+			document.querySelector('#orders-summary').hidden=historyTab!=='ORDERS';
+			document.querySelector('#orders-filled').textContent=orders.length;
+			document.querySelector('#orders-total').textContent=orders.length;
+			list.innerHTML=historyTab==='ORDERS'
+				?orders.length?orders.slice().reverse().map(order=>`<div class="history-row order-row"><span><strong>${order.symbol}, <span class="side">${order.side}</span></strong><small>${order.closedAt}<br>${order.volume.toFixed(2)} / ${order.volume.toFixed(2)} at market</small></span><b class="order-status">FILLED</b></div>`).join(''):'<div class="empty-view">No orders yet.</div>'
+				:rows.length?rows.slice().reverse().map(trade=>`<div class="history-row"><span><strong>${trade.symbol}, <span class="side ${trade.side}">${trade.side} ${trade.volume.toFixed(2)}</span></strong><small>${trade.closedAt} · ${formatPrice(market.find(item=>item.symbol===trade.symbol),trade.openPrice)} → ${formatPrice(market.find(item=>item.symbol===trade.symbol),trade.closePrice)}</small></span><b class="closed" style="color:${trade.profit>=0?'#287cb7':'#b6272e'}">${trade.profit.toFixed(2)}</b></div>`).join(''):'<div class="empty-view">No history yet. Trading activity will appear here.</div>';
+			const total=closedTrades.reduce((sum,trade)=>sum+trade.profit,0);
+			document.querySelector('#history-profit').textContent=total.toFixed(2);
+			document.querySelector('#history-profit').style.color=total>=0?'#6fa8ff':'#ef646b';
+			document.querySelector('#history-balance').textContent=formatNumber(balance);
+		}
+		function updateAccount(){
+			const floating=positions.reduce((sum,position)=>sum+position.profit,0),margin=positions.reduce((sum,position)=>sum+position.volume*100,0),equity=balance+floating;
+			document.querySelector('#balance').textContent=formatNumber(balance);
+			document.querySelector('#equity').textContent=formatNumber(equity);
+			document.querySelector('#margin').textContent=formatNumber(margin);
+			document.querySelector('#free-margin').textContent=formatNumber(equity-margin);
+			document.querySelector('#margin-level').textContent=margin?`${(equity/margin*100).toFixed(2)}%`:'—';
+			document.querySelector('#total-profit').textContent=`${floating.toFixed(2)} USD`;
+			document.querySelector('#total-profit').className=floating>=0?'profit':'loss';
+			document.querySelector('#nav-profit').textContent=floating.toFixed(2);
+			document.querySelector('#nav-profit').style.color=floating>=0?'#6fa8ff':'#ef646b';
+			document.querySelector('#nav-profit').style.background=floating>=0?'#101f34':'#2b1418';
+			document.querySelector('#history-balance').textContent=formatNumber(balance);
+		}
+		function addHistoryEntry(position, kind, closedAt, closePrice, profit) {
+			historyEntries.push({kind,symbol:position.symbol,side:position.side,volume:position.volume,openPrice:position.openPrice,closePrice,profit,closedAt});
+			renderHistory();
+		}
+		function nextProfitTarget() {
+			const index=closedTrades.length+positions.length;
+			return 1+index*.22;
+		}
+		function openPosition(item, side, volume, announce=false) {
+			const openPrice=Number(side==='buy'?item.ask:item.bid), position={id:Date.now()+Math.random(),symbol:item.symbol,side,volume,openPrice,mark:openPrice,profit:0,targetProfit:nextProfitTarget(),age:0,closeAfter:8+Math.floor(Math.random()*8)};
+			positions.push(position);
+			addHistoryEntry(position,'order',formatTimestamp(),openPrice,0);
+			renderPositions();updateAccount();
+			if(announce)showToast(`${side.toUpperCase()} ${volume.toFixed(2)} ${item.symbol} opened`);
+		}
+		function closePosition(id, reason='Bot closed position') {
+			const index=positions.findIndex(position=>position.id===id); if(index<0)return;
+			const [position]=positions.splice(index,1),item=market.find(entry=>entry.symbol===position.symbol),closePrice=Number(position.side==='buy'?item.bid:item.ask);
+			position.profit=Math.max(position.profit,position.targetProfit);
+			balance+=position.profit;
+			const closedAt=formatTimestamp();
+			closedTrades.push({...position,closePrice,closedAt});
+			addHistoryEntry(position,'position',closedAt,closePrice,position.profit);
+			addHistoryEntry(position,'deal',closedAt,closePrice,position.profit);
+			renderPositions();updateAccount();
+		}
+		function updateQuoteRows() {
+			market.forEach(item=>{
+				const row=document.querySelector(`.quote-row[data-symbol="${item.symbol}"]`); if(!row)return;
+				const [bidMain,bidFrac]=item.bid.split('.'),[askMain,askFrac]=item.ask.split('.');
+				row.querySelector('.quote-price.bid').innerHTML=`${bidMain}.<small>${bidFrac||''}</small>`;
+				row.querySelector('.quote-price.ask').innerHTML=`${askMain}.<small>${askFrac||''}</small>`;
+				row.querySelector('.quote-change').innerHTML=`${item.delta.replace(/^\+/,'')} <em style="color:${item.change.startsWith('-')?'#c54c4b':'#287cb7'}">${item.change.replace(/^\+/,'')}</em>`;
+				row.querySelector('.quote-time').textContent=`${new Date().toLocaleTimeString('en-GB')} ▱ ${item.spreadPoints}`;
+				row.querySelector('.quote-range').innerHTML=`<span>L: ${item.low}</span><span>H: ${item.high}</span>`;
+				const priceNodes=row.querySelectorAll('.quote-price');
+				priceNodes.forEach(node=>{node.classList.remove('tick-up','tick-down','rising','falling');node.classList.add(item.direction==='up'?'rising':'falling');void node.offsetWidth;node.classList.add(item.direction==='up'?'tick-up':'tick-down');});
+			});
+			updateSymbol();
+		}
+		function simulateTick() {
+			simulationTick++;
+			market.forEach(item=>{
+				const step=stepFor(item),before=Number(item.bid),movement=(Math.random()-.49)*step*3;
+				const bid=Math.max(step,Number((before+movement).toFixed(digitsFor(item)))),spread=spreadFor(item);
+				item.bid=formatPrice(item,bid);item.ask=formatPrice(item,bid+spread);item.direction=bid>=before?'up':'down';
+				item.delta=`${Math.round((bid-item.reference)/step)>=0?'+':''}${Math.round((bid-item.reference)/step)}`;
+				item.change=`${((bid-item.reference)/item.reference*100).toFixed(2)}%`;
+				item.spreadPoints=Math.round((Number(item.ask)-Number(item.bid))/step);
+				item.low=formatPrice(item,Math.min(Number(item.low),bid));item.high=formatPrice(item,Math.max(Number(item.high),bid));
+				periods.forEach(period=>{const series=item.candlesByPeriod[period],candle=series[series.length-1];candle.close=bid;candle.high=Math.max(candle.high,bid);candle.low=Math.min(candle.low,bid);if(simulationTick%candleCadence[period]===0){series.push({open:bid,close:bid,high:bid,low:bid});if(series.length>42)series.shift();}});
+			});
+			positions.forEach(position=>{
+				const item=market.find(entry=>entry.symbol===position.symbol);position.age++;
+				position.mark=Number(position.side==='buy'?item.bid:item.ask);
+				position.profit=Math.max(0,Math.min(position.targetProfit,position.targetProfit*position.age/position.closeAfter));
+			});
+			if(botRunning){
+				const batchSize=botBatchSizes[botBatchIndex];
+				if(positions.length<batchSize&&simulationTick%3===0){if(!botBatchSide)botBatchSide=Math.random()>.5?'buy':'sell';const volume=Number((.01+Math.random()*.02).toFixed(2));openPosition(botSymbol,botBatchSide,volume);}
+				if(positions.length===batchSize&&positions.every(position=>position.profit>=position.targetProfit)){
+					[...positions].forEach(position=>closePosition(position.id));
+					botBatchIndex=(botBatchIndex+1)%botBatchSizes.length;
+					botBatchSide=null;
+				}
+			}
+			updateQuoteRows();renderPositions();updateAccount();drawChart();
+		}
+		function showToast(message){const toast=document.querySelector('#toast');toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>toast.classList.remove('show'),2100);}
+		function openWheel(){const layer=document.querySelector('#wheel-layer');layer.classList.add('open');layer.setAttribute('aria-hidden','false');}
+		function closeWheel(){const layer=document.querySelector('#wheel-layer');layer.classList.remove('open');layer.setAttribute('aria-hidden','true');}
+		document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.screen)));
+		document.querySelector('#period-button').addEventListener('click',openWheel);
+		document.querySelector('#screen-charts').addEventListener('click',event=>{if(!event.target.closest('button'))openWheel();});
+		document.querySelector('#chart-symbol-button').addEventListener('click',()=>showScreen('quotes'));
+		document.querySelector('#wheel-dismiss').addEventListener('click',closeWheel);document.querySelector('#wheel-center').addEventListener('click',closeWheel);
+		document.querySelectorAll('.wheel-item[data-period]').forEach(b=>b.addEventListener('click',()=>{currentPeriod=b.dataset.period;document.querySelector('#chart-period').textContent=currentPeriod;document.querySelector('#period-button').textContent=currentPeriod;document.querySelectorAll('.wheel-item[data-period]').forEach(x=>x.classList.toggle('selected',x===b));closeWheel();drawChart();}));
+		document.querySelectorAll('[data-wheel-tool]').forEach(b=>b.addEventListener('click',()=>{closeWheel();showToast(`${b.getAttribute('aria-label')} selected`);}));
+		document.querySelector('#chart-mode-button').addEventListener('click',()=>{document.querySelector('#quick-trade').classList.toggle('visible');requestAnimationFrame(drawChart);});
+		document.querySelector('#crosshair-button').addEventListener('click',()=>showToast('Crosshair tool selected'));document.querySelector('#indicator-button').addEventListener('click',()=>showToast('Indicators menu'));document.querySelector('#objects-button').addEventListener('click',()=>showToast('Chart objects'));
+		document.querySelector('[data-actions="quotes"] button[aria-label="Add symbol"]').addEventListener('click',()=>showToast('All simulation symbols are listed'));
+		document.querySelector('[data-actions="quotes"] button[aria-label="Edit quotes"]').addEventListener('click',()=>showToast('Quote watchlist editing is not enabled'));
+		document.querySelector('[data-actions="trade"] button[aria-label="Sort positions"]').addEventListener('click',()=>{positions.reverse();renderPositions();});
+		document.querySelector('[data-actions="trade"] button[aria-label="New simulated order"]').addEventListener('click',()=>{showScreen('charts');document.querySelector('#quick-trade').classList.add('visible');requestAnimationFrame(drawChart);});
+		document.querySelector('[data-actions="history"] button[aria-label="Refresh history"]').addEventListener('click',()=>{renderHistory();showToast('History updated from simulation');});
+		document.querySelector('[data-actions="history"] button[aria-label="Sort history"]').addEventListener('click',()=>{historyEntries.reverse();renderHistory();});
+		document.querySelector('[data-actions="history"] button[aria-label="Choose date"]').addEventListener('click',()=>showToast('Showing all simulated dates'));
+		document.querySelector('[data-actions="messages"] button').addEventListener('click',()=>showToast('Messages are local simulation notices'));
+		document.querySelectorAll('[data-history-tab]').forEach(button=>button.addEventListener('click',()=>{historyTab=button.dataset.historyTab;document.querySelectorAll('[data-history-tab]').forEach(tab=>tab.classList.toggle('active',tab===button));renderHistory();}));
+		document.querySelector('#volume-down').addEventListener('click',()=>{const i=document.querySelector('#volume');i.value=Math.max(.01,Number(i.value)-.1).toFixed(2).replace(/0+$/,'').replace(/\.$/,'');});
+		document.querySelector('#volume-up').addEventListener('click',()=>{const i=document.querySelector('#volume');i.value=(Number(i.value)+.1).toFixed(2).replace(/0+$/,'').replace(/\.$/,'');});
+		document.querySelectorAll('[data-order]').forEach(button=>button.addEventListener('click',()=>{const volume=Number(document.querySelector('#volume').value);if(!Number.isFinite(volume)||volume<=0){showToast('Enter a valid order volume');return;}openPosition(selectedSymbol,button.dataset.order.toLowerCase(),volume,true);}));
+		document.querySelector('#menu-button').addEventListener('click',()=>document.querySelector('#drawer-layer').classList.add('open'));
+		document.querySelector('#drawer-layer').addEventListener('click',e=>{if(e.target.id==='drawer-layer')e.currentTarget.classList.remove('open');});
+		document.querySelectorAll('[data-drawer-screen]').forEach(b=>b.addEventListener('click',()=>{document.querySelector('#drawer-layer').classList.remove('open');showScreen(b.dataset.drawerScreen);}));
+		new ResizeObserver(drawChart).observe(document.querySelector('.chart-wrap'));
+		renderQuotes();renderHistory();renderPositions();updateAccount();updateSymbol();
+		setInterval(simulateTick,250);
+	</script>
+</body>
+</html>
