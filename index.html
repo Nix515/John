@@ -106,6 +106,7 @@
 		.account-metrics { display:grid; gap:9px; padding:8px 0 9px; }
 		.metric { display:grid; grid-template-columns:auto 1fr auto; align-items:baseline; gap:9px; font-size:14px; }
 		.metric .leader { height:1px; border-bottom:4px dotted #e6e6e6; }
+		.trade-summary .metric .leader { border-bottom-width:3px; }
 		.metric strong { font-size:14px; }
 		.position-heading { height:39px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; color:#8b8b8b; background:#f7f7f7; font-size:14px; font-weight:600; }
 		.position-card { border-bottom:1px solid var(--line); }
@@ -122,10 +123,15 @@
 		.position-detail { display:flex; justify-content:space-between; gap:8px; min-width:0; }
 		.position-detail span:last-child { color:#e0e4e9; text-align:right; }
 		.history-row,.message-row { padding:16px 18px; border-bottom:1px solid var(--line); }
-		.history-row { display:flex; justify-content:space-between; gap:12px; }
+		.history-row { min-height:58px; display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto; align-items:center; gap:4px 12px; padding:10px 18px; }
+		.history-row .history-title { grid-column:1; grid-row:1; min-width:0; margin:0; font-size:15px; font-weight:600; white-space:nowrap; }
+		.history-row .history-date { grid-column:2; grid-row:1; color:#9ba3ad; font-size:12px; text-align:right; white-space:nowrap; }
+		.history-row .history-details { grid-column:1; grid-row:2; min-width:0; color:#d4d8de; font-size:12px; white-space:nowrap; }
+		.history-row .history-value { grid-column:2; grid-row:2; color:#ff5361; font-size:12px; text-align:right; white-space:nowrap; }
 		.history-row strong,.message-row strong { display:block; margin-bottom:6px; font-size:15px; }
 		.history-row small,.message-row small { color:#888; font-size:12px; }
 		.history-row .closed { color:var(--red); font-size:16px; }
+		.history-row .order-status { color:#d4d8de; font-size:12px; font-weight:400; }
 		.history-row .side { color:var(--blue-dark); }
 		.history-context { padding:0 17px 9px; color:#85888c; font-size:16px; }
 		.history-tabs { height:48px; flex:0 0 48px; display:grid; grid-template-columns:repeat(3,1fr); border-bottom:1px solid var(--line); }
@@ -133,6 +139,7 @@
 		.history-tab.active { color:#18191b; }
 		.history-tab.active::after { position:absolute; right:0; bottom:-1px; left:0; height:3px; content:""; background:var(--blue); }
 		.history-summary { display:grid; gap:8px; padding:14px 17px 16px; border-bottom:1px solid var(--line); }
+		.history-summary .metric .leader { border-bottom-width:3px; }
 		.history-summary .metric { font-size:14px; }
 		.history-summary .metric strong:last-child { font-size:14px; }
 		.bot-event { min-height:24px; padding:4px 17px; color:#178454; font-size:11px; border-bottom:1px solid #edf1f3; }
@@ -223,6 +230,7 @@
 		.page-heading #total-profit { display:inline-block; font-size:18px; font-weight:600; }
 		.page-heading #total-profit.profit { color:#5fa8ff; }
 		.page-heading #total-profit.loss { color:#ff5361; }
+		.page-heading #total-profit.neutral { color:#fff; }
 		.history-context { color:#a0a8b2; }
 		.order-result { color:#9ba3ad; }
 		.order-result b { color:#c3c8d0; font-weight:600; }
@@ -312,7 +320,7 @@
 		<nav class="bottom-nav" aria-label="Main navigation">
 			<button class="nav-item" data-screen="quotes"><span class="nav-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 37V10m0 0L6 19m9-9 9 9M33 11v27m0 0-9-9m9 9 9-9"/></svg></span><span class="nav-label">Quotes</span></button>
 			<button class="nav-item active" data-screen="charts"><span class="nav-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 5v10m0 15v13M34 2v9m0 19v14"/><rect x="8" y="15" width="12" height="15" rx="1"/><rect x="28" y="11" width="12" height="19" rx="1"/></svg></span><span class="nav-label">Charts</span></button>
-			<button class="nav-item" data-screen="trade"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16 8.4 11.5 M11.7 14.3 19.5 5"/><path class="trade-middle-connector" d="m8.86 11.89 2.38 2.02"/><circle cx="4" cy="16" r="1.5"/><circle cx="8.4" cy="11.5" r=".6"/><circle cx="11.7" cy="14.3" r=".6"/><circle cx="19.5" cy="5" r="1.5"/></svg></span><span class="nav-pl" id="nav-profit">+0.00</span></button>
+			<button class="nav-item" data-screen="trade"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16 8.4 11.5 M11.7 14.3 19.5 5"/><path class="trade-middle-connector" d="m8.86 11.89 2.38 2.02"/><circle cx="4" cy="16" r="1.5"/><circle cx="8.4" cy="11.5" r=".3"/><circle cx="11.7" cy="14.3" r=".3"/><circle cx="19.5" cy="5" r="1.5"/></svg></span><span class="nav-pl" id="nav-profit">+0.00</span></button>
 			<button class="nav-item" data-screen="history"><span class="nav-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 17a19 19 0 1 1-1 15M8 8v10h10m6-7v14l10 7"/></svg></span><span class="nav-label">History</span></button>
 			<button class="nav-item" data-screen="messages"><span class="nav-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 6h20a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H19l-8 6v-6h-1a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4Z"/><path d="M19 14h19a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4h-1v5l-7-5h-7a4 4 0 0 1-4-4"/></svg></span><span class="nav-label">Messages</span></button>
 		</nav>
@@ -354,7 +362,22 @@
 			{symbol:'SOLUSD',description:'Solana vs US Dollar',assetClass:'crypto',bid:'155.280',ask:'155.320',change:'-0.11%',delta:'-17',low:'153.940',high:'156.020'},
 			{symbol:'XRPUSD',description:'XRP vs US Dollar',assetClass:'crypto',bid:'0.55210',ask:'0.55230',change:'+0.07%',delta:'+4',low:'0.54820',high:'0.55460'}
 		];
-		const startingBalance = 8;
+		const startingBalanceOptions = [8,10,30,50,100];
+		const startingBalanceStorageKey = 'northstar-starting-balance';
+		let previousStartingBalance = null;
+		try {
+			const storedBalance = Number(localStorage.getItem(startingBalanceStorageKey));
+			if (startingBalanceOptions.includes(storedBalance)) previousStartingBalance = storedBalance;
+		} catch (error) {
+			console.error('Unable to read the saved starting balance.', error);
+		}
+		const availableStartingBalances = startingBalanceOptions.filter(amount => amount !== previousStartingBalance);
+		const startingBalance = availableStartingBalances[Math.floor(Math.random() * availableStartingBalances.length)];
+		try {
+			localStorage.setItem(startingBalanceStorageKey, String(startingBalance));
+		} catch (error) {
+			console.error('Unable to save the starting balance for the next refresh.', error);
+		}
 		const maxTradeVolume = 0.01;
 		const botSymbol = market.find(item=>item.symbol==='XAUUSD');
 		let balance = startingBalance, selectedSymbol = botSymbol, currentPeriod = 'M1';
@@ -458,8 +481,8 @@
 			document.querySelector('#orders-filled').textContent=orders.length;
 			document.querySelector('#orders-total').textContent=orders.length;
 			list.innerHTML=historyTab==='ORDERS'
-				?orders.length?orders.slice().reverse().map(order=>`<div class="history-row order-row"><span><strong>${order.symbol}, <span class="side">${order.side}</span></strong><small>${order.closedAt}<br>${order.volume.toFixed(2)} / ${order.volume.toFixed(2)} at market</small></span><b class="order-status">FILLED</b></div>`).join(''):'<div class="empty-view">No orders yet.</div>'
-				:rows.length?rows.slice().reverse().map(trade=>`<div class="history-row"><span><strong>${trade.symbol}, <span class="side ${trade.side}">${trade.side} ${trade.volume.toFixed(2)}</span></strong><small>${trade.closedAt} · ${formatPrice(market.find(item=>item.symbol===trade.symbol),trade.openPrice)} → ${formatPrice(market.find(item=>item.symbol===trade.symbol),trade.closePrice)}</small></span><b class="closed" style="color:${trade.profit>=0?'#1685ff':'#ff5361'}">${trade.profit.toFixed(2)}</b></div>`).join(''):'<div class="empty-view">No history yet. Trading activity will appear here.</div>';
+				?orders.length?orders.slice().reverse().map(order=>`<div class="history-row order-row"><strong class="history-title">${order.symbol}, <span class="side ${order.side}">${order.side}</span></strong><time class="history-date">${order.closedAt}</time><span class="history-details">${order.volume.toFixed(2)} / ${order.volume.toFixed(2)} at market</span><b class="history-value order-status">FILLED</b></div>`).join(''):'<div class="empty-view">No orders yet.</div>'
+				:rows.length?rows.slice().reverse().map(trade=>{const item=market.find(entry=>entry.symbol===trade.symbol),isDeal=trade.kind==='deal',details=isDeal?`${trade.volume.toFixed(2)} at ${formatPrice(item,trade.closePrice)}`:`${trade.volume.toFixed(2)} at ${formatPrice(item,trade.openPrice)} → ${formatPrice(item,trade.closePrice)}`;return `<div class="history-row"><strong class="history-title">${trade.symbol}, <span class="side ${trade.side}">${trade.side}${isDeal?' out':` ${trade.volume.toFixed(2)}`}</span></strong><time class="history-date">${trade.closedAt}</time><span class="history-details">${details}</span><b class="history-value closed" style="color:${trade.profit>=0?'#1685ff':'#ff5361'}">${trade.profit.toFixed(2)}</b></div>`;}).join(''):'<div class="empty-view">No history yet. Trading activity will appear here.</div>';
 			const total=closedTrades.reduce((sum,trade)=>sum+trade.profit,0);
 			document.querySelector('#history-profit').textContent=total.toFixed(2);
 			document.querySelector('#history-profit').style.color=total>=0?'#5fa8ff':'#ff5361';
@@ -476,7 +499,7 @@
 			document.querySelector('#free-margin').textContent='0.00';
 			document.querySelector('#margin-level').textContent=margin?`${(equity/margin*100).toFixed(2)}%`:'—';
 			document.querySelector('#total-profit').textContent=`${floating.toFixed(2)} USD`;
-			document.querySelector('#total-profit').className=floating>=0?'profit':'loss';
+			document.querySelector('#total-profit').className=floating>0?'profit':floating<0?'loss':'neutral';
 			document.querySelector('#nav-profit').textContent=floating.toFixed(2);
 			document.querySelector('#nav-profit').style.color=floating>=0?'#6fa8ff':'#ef646b';
 			document.querySelector('#nav-profit').style.background=floating>=0?'#101f34':'#2b1418';
