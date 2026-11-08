@@ -377,7 +377,7 @@
 			console.error('Unable to save the starting balance for the next refresh.', error);
 		}
 		const maxTradeVolume = 0.01;
-		const botSymbol = market.find(item=>item.symbol==='XAUUSD');
+		const botSymbol = market.find(item=>item.symbol==='BTCUSD');
 		let balance = startingBalance, selectedSymbol = botSymbol, currentPeriod = 'M1';
 		let toastTimeout, botRunning = true, simulationTick = 0, historyTab = 'POSITIONS';
 		const botStartupDelay = 10000, botStartedAt = Date.now();
