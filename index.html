@@ -4,6 +4,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 	<meta name="theme-color" content="#000000">
+	<meta name="xau-api-base" content="">
 	<title>Northstar Mobile Trading</title>
 	<style>
 		:root { color-scheme:dark; --blue:#1685ff; --blue-dark:#5fa8ff; --nav-blue:#347ff0; --red:#ff5361; --green:#3bb79d; --ink:#edf0f4; --muted:#a0a8b2; --line:#343a44; }
@@ -379,7 +380,7 @@
 		const maxTradeVolume = 0.01;
 		const botSymbol = market.find(item=>item.symbol==='XAUUSD');
 		let balance = startingBalance, selectedSymbol = botSymbol, currentPeriod = 'M1';
-		let toastTimeout, botRunning = true, simulationTick = 0, historyTab = 'POSITIONS';
+		let toastTimeout, botRunning = false, simulationTick = 0, historyTab = 'POSITIONS';
 		const botStartupDelay = 10000, botStartedAt = Date.now();
 		let expandedPositionId = null, nextPositionTicket = 265877672, renderedPositionsKey = null;
 		const botBatchSizes = [8,10,17,9];
@@ -387,6 +388,8 @@
 		let botBatchIndex = 0, botBatchSide = null, botBatchActive = false, botBatchOpened = 0, botBatchSize = 0, nextBotOrderTick = 0;
 		const positions = [], closedTrades = [], historyEntries = [];
 		const canvas = document.querySelector('#price-chart'), ctx = canvas.getContext('2d');
+		let liveXauCandles = [];
+		let liveTradingSnapshot = null;
 		const digitsFor = item => (item.bid.split('.')[1] || '').length;
 		const stepFor = item => 10 ** -digitsFor(item);
 		const spreadFor = item => stepFor(item) * (item.symbol.endsWith('JPY') ? 3 : 1.5);
@@ -413,7 +416,10 @@
 			const rect = canvas.getBoundingClientRect(); if (!rect.width || !rect.height) return;
 			const ratio = devicePixelRatio || 1; canvas.width = Math.round(rect.width * ratio); canvas.height = Math.round(rect.height * ratio); ctx.setTransform(ratio,0,0,ratio,0,0);
 			const width=rect.width,height=rect.height,axisWidth=Math.max(66,Math.min(78,width*.15)),plotRight=width-axisWidth,top=1,bottom=height-36,plotHeight=bottom-top;
-			const candles=selectedSymbol.candlesByPeriod[currentPeriod], values=candles.flatMap(c=>[c.high,c.low]), step=stepFor(selectedSymbol);
+			const candles=selectedSymbol.symbol==='XAUUSD'&&liveXauCandles.length
+				?liveXauCandles
+				:selectedSymbol.candlesByPeriod[currentPeriod];
+			const values=candles.flatMap(c=>[c.high,c.low]), step=stepFor(selectedSymbol);
 			const low=Math.min(...values)-step*10, high=Math.max(...values)+step*10, range=high-low || step*20;
 			const y=price=>top+(high-price)/range*plotHeight;
 			ctx.clearRect(0,0,width,height); ctx.fillStyle='#000000'; ctx.fillRect(0,0,width,height);
@@ -423,7 +429,11 @@
 			candles.forEach((candle,index)=>{const x=candleGap*(index+1),color=candle.close>=candle.open?'#2aa39a':'#ff5361';ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+.5,y(candle.high));ctx.lineTo(x+.5,y(candle.low));ctx.stroke();ctx.fillStyle=color;ctx.fillRect(x-bodyWidth/2,y(Math.max(candle.open,candle.close)),bodyWidth,Math.max(2,y(Math.min(candle.open,candle.close))-y(Math.max(candle.open,candle.close))));});
 			const currentY=y(Number(selectedSymbol.bid)),trendColor=selectedSymbol.direction==='up'?'#2aa39a':selectedSymbol.direction==='down'?'#ff5361':'#999da1';ctx.beginPath();ctx.strokeStyle=trendColor;ctx.moveTo(0,currentY+.5);ctx.lineTo(plotRight,currentY+.5);ctx.stroke();ctx.fillStyle=trendColor;ctx.fillRect(plotRight+1,currentY-14,axisWidth-1,36);ctx.fillStyle='#fff';ctx.font='13px Arial';ctx.fillText(selectedSymbol.bid,plotRight+5,currentY+1);ctx.font='11px Arial';ctx.fillText(`00:${String(59-simulationTick%60).padStart(2,'0')}`,plotRight+5,currentY+15);
 			positions.filter(position=>position.symbol===selectedSymbol.symbol).forEach(position=>{const entryY=y(position.openPrice),color=position.side==='buy'?'#1685ff':'#ff5361';ctx.beginPath();ctx.setLineDash([5,4]);ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.moveTo(0,entryY);ctx.lineTo(plotRight,entryY);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=color;ctx.font='11px Arial';ctx.textAlign='left';ctx.fillText(`${position.side.toUpperCase()} ${position.volume.toFixed(2)}`,4,entryY-4);});
-			ctx.font='12px Arial';ctx.fillStyle='#c1c8d1';ctx.textAlign='center';const times=currentPeriod==='M1'?['21 Oct 07:20','21 Oct 07:29','21 Oct 07:38','21 Oct 07:47']:['17 Oct 08:00','19 Oct 08:00','21 Oct 08:00','23 Oct 08:00'];times.forEach((label,i)=>ctx.fillText(label,plotRight*(.05+i*.29),height-9));ctx.textAlign='left';
+			ctx.font='12px Arial';ctx.fillStyle='#c1c8d1';ctx.textAlign='center';
+			const times=liveXauCandles.length&&selectedSymbol.symbol==='XAUUSD'
+				?[.15,.38,.61,.84].map(ratio=>{const index=Math.max(0,Math.min(liveXauCandles.length-1,Math.floor(liveXauCandles.length*ratio)));const date=new Date(liveXauCandles[index].datetime);return Number.isNaN(date.getTime())?'':date.toLocaleString(undefined,{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});})
+				:currentPeriod==='M1'?['21 Oct 07:20','21 Oct 07:29','21 Oct 07:38','21 Oct 07:47']:['17 Oct 08:00','19 Oct 08:00','21 Oct 08:00','23 Oct 08:00'];
+			times.forEach((label,i)=>{if(label)ctx.fillText(label,plotRight*(.05+i*.29),height-9);});ctx.textAlign='left';
 		}
 		function renderQuotes(){
 			const list=document.querySelector('#quote-list');
@@ -543,9 +553,85 @@
 			});
 			updateSymbol();
 		}
+		async function syncLiveXau() {
+			try {
+				const configuredApiBase=document.querySelector('meta[name="xau-api-base"]')?.content.trim().replace(/\/$/,'');
+				const apiBase=configuredApiBase||(window.location.protocol==='http:'||window.location.protocol==='https:'?window.location.origin:'http://localhost:3000');
+				const response = await fetch(`${apiBase}/api/xau`);
+				if (!response.ok) throw new Error(`Server returned HTTP ${response.status}`);
+				const data = await response.json();
+				if (!data.candles?.length) return;
+
+				liveXauCandles = [...data.candles].reverse();
+				const latest = data.latest || liveXauCandles.at(-1);
+				const bid = Number(latest.close);
+				const step = 0.01;
+				botSymbol.bid = bid.toFixed(2);
+				botSymbol.ask = (bid + step).toFixed(2);
+				botSymbol.reference = bid;
+				botSymbol.direction = liveXauCandles.length > 1 && bid >= liveXauCandles.at(-2).close ? 'up' : 'down';
+				botSymbol.low = Math.min(...liveXauCandles.map(candle => candle.low)).toFixed(2);
+				botSymbol.high = Math.max(...liveXauCandles.map(candle => candle.high)).toFixed(2);
+				botSymbol.candlesByPeriod.M1 = liveXauCandles;
+
+				liveTradingSnapshot = data.trading;
+				syncLiveTrading(data.trading);
+				updateQuoteRows();
+				updateSymbol();
+			} catch (error) {
+				console.error('Unable to synchronize live XAU/USD data.', error);
+			}
+		}
+		function syncLiveTrading(trading) {
+			if (!trading) return;
+			positions.splice(0, positions.length, ...trading.positions.map(position => ({
+				id: position.ticket,
+				ticket: position.ticket,
+				symbol: 'XAUUSD',
+				side: position.side,
+				volume: position.volume,
+				openPrice: position.openPrice,
+				mark: position.markPrice,
+				profit: position.profit,
+				openedAt: position.openedAt,
+				swap: 0,
+				commission: 0,
+				targetProfit: 0,
+				age: 0,
+				closeAfter: Number.MAX_SAFE_INTEGER,
+				botGenerated: true
+			})));
+			historyEntries.splice(0, historyEntries.length);
+			trading.history.forEach(entry => {
+				historyEntries.push({
+					kind: entry.type,
+					symbol: 'XAUUSD',
+					side: entry.side,
+					volume: entry.volume,
+					openPrice: entry.openPrice,
+					closePrice: entry.closePrice ?? entry.price,
+					profit: entry.profit ?? 0,
+					closedAt: entry.datetime
+				});
+			});
+			closedTrades.splice(0, closedTrades.length, ...trading.deals.map(deal => ({
+				symbol: 'XAUUSD',
+				side: deal.side,
+				volume: deal.volume,
+				openPrice: deal.openPrice,
+				closePrice: deal.closePrice,
+				profit: deal.profit,
+				closedAt: deal.datetime
+			})));
+			balance = startingBalance + trading.realizedProfit;
+			renderPositions();
+			renderHistory();
+			updateAccount();
+		}
 		function simulateTick() {
 			simulationTick++;
 			market.forEach(item=>{
+				if(item.symbol==='XAUUSD')return;
 				const step=stepFor(item),before=Number(item.bid),movement=(Math.random()-.49)*step*3;
 				const bid=Math.max(step,Number((before+movement).toFixed(digitsFor(item)))),spread=spreadFor(item);
 				item.bid=formatPrice(item,bid);item.ask=formatPrice(item,bid+spread);item.direction=bid>=before?'up':'down';
@@ -557,11 +643,12 @@
 			});
 			positions.forEach(position=>{
 				const item=market.find(entry=>entry.symbol===position.symbol);position.age++;
+				if(position.symbol==='XAUUSD')return;
 				position.mark=Number(position.side==='buy'?item.bid:item.ask);
 				const progress=Math.min(1,position.age/position.closeAfter);
 				position.profit=progress>=1?position.targetProfit:Math.min(maxTradeProfit,position.initialLoss+(position.targetProfit-position.initialLoss)*progress);
 			});
-			[...positions].filter(position=>position.age>=position.closeAfter).forEach(position=>closePosition(position.id));
+			[...positions].filter(position=>position.symbol!=='XAUUSD'&&position.age>=position.closeAfter).forEach(position=>closePosition(position.id));
 			if(botRunning&&Date.now()-botStartedAt>=botStartupDelay){
 				if(!botBatchActive){
 					botBatchActive=true;botBatchSize=botBatchSizes[botBatchIndex];botBatchOpened=0;
@@ -634,6 +721,8 @@
 		document.querySelectorAll('[data-drawer-screen]').forEach(b=>b.addEventListener('click',()=>{document.querySelector('#drawer-layer').classList.remove('open');showScreen(b.dataset.drawerScreen);}));
 		new ResizeObserver(drawChart).observe(document.querySelector('.chart-wrap'));
 		renderQuotes();renderHistory();renderPositions();updateAccount();updateSymbol();
+		syncLiveXau();
+		setInterval(syncLiveXau,30000);
 		setInterval(simulateTick,100);
 	</script>
 </body>

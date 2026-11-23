@@ -1,0 +1,19 @@
+{
+  "name": "northstar-xau-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Express XAU/USD data proxy and virtual trading engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test",
+    "check": "npm test"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
