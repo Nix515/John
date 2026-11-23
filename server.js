@@ -78,6 +78,15 @@ app.set("trust proxy", 1);
 app.use(express.json({ limit: "32kb" }));
 app.use("/api", (_request, response, next) => {
   response.set("Cache-Control", "no-store");
+  const origin = _request.headers.origin;
+  if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+      origin === "https://astrosoftware.nl") {
+    response.set("Access-Control-Allow-Origin", origin || "*");
+  }
+  response.set("Vary", "Origin");
+  response.set("Access-Control-Allow-Headers", "Content-Type");
+  response.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  if (_request.method === "OPTIONS") return response.sendStatus(204);
   next();
 });
 app.use(express.static(__dirname, {
